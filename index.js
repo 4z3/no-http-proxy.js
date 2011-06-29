@@ -1,73 +1,45 @@
 var http = require('http');
 var https = require('https');
-var pump = require('util').pump;
 
+var pump = require('./node.util.pump').pump;
+
+var filename = __dirname + '/proxy-table.json';
+var table = JSON.parse(require('fs').readFileSync(filename));
 
 http.createServer(function (req, res) {
 
-  delete req.headers.connection;
-  req.headers.host = '194.127.208.119:8443';
+  var match = /^\/([^\/]+)(.*)$/.exec(req.url);
+  var proxyAlias = match[1];
+  if (proxyAlias in table) {
+    var baseUrl = table[proxyAlias];
+    var url = baseUrl + match[2];
 
-  var options = {
-    host: '194.127.208.119',
-    port: 8443,
-    path: '/fischerrfc/',
-    method: 'POST',
-    headers: req.headers
+    var parsed_baseUrl = require('url').parse(baseUrl);
+
+    var protocol = parsed_baseUrl.protocol;
+    var host = parsed_baseUrl.host;
+
+    // construct proxy request options
+    var headers = JSON.parse(JSON.stringify(req.headers));
+    headers.host = host;
+    var options = {
+      host: parsed_baseUrl.hostname,
+      port: parsed_baseUrl.port,
+      path: url.replace(protocol + '//' + host, ''), // TODO url.parse-foo
+      method: req.method,
+      headers: headers
+    };
+
+    var preq = https.request(options, function(pres) {
+      res.writeHead(pres.statusCode, pres.headers);
+      pres.setEncoding('binary');
+      pump(pres, res);
+    });
+
+    // XXX without this o.write(chunk) is borked
+    req.setEncoding('binary');
+    pump(req, preq);
   };
-
-  var preq = https.request(options, function(pres) {
-    console.log("statuscode: ", pres.statusCode);
-    console.log("headers: ", pres.headers);
-
-    pres.on('data', function(chunk) {
-      console.log('pres data:', chunk.toString());
-      res.write(chunk.toString(), 'binary');
-    });
-    pres.on('end', function() {
-      console.log('pres end.');
-      res.end();
-    });
-    pres.on('close', function() {
-      console.log('pres close.');
-      res.end();
-    });
-    pres.on('error', function (err) {
-      console.log('pres error:', err);
-    });
-
-    res.writeHead(pres.statusCode, pres.headers);
-  });
-
-  req.on('data', function(chunk) {
-    console.log('preq data:', chunk.toString());
-    preq.write(chunk.toString(), 'binary');
-  });
-  req.on('end', function() {
-    console.log('preq end.');
-    preq.end();
-  });
 }).listen(1337, function () {
   console.log('Server running at http://127.0.0.1:1337/');
 });
-
-//
-//
-//var req = https.request(options, function(res) {
-//  console.log("statuscode: ", res.statuscode);
-//  console.log("headers: ", res.headers);
-//
-//  res.on('data', function(d) {
-//    process.stdout.write(d);
-//  });
-//});
-//var x = JSON.stringify(
-//{ "service": { "auth": { "user": "feser-c", "password": "kunden" }, "request": { "sap_credentials": { "password": "kunden", "user": "feser-c" }, "sap_function": "ZMCRM_SYSTEM_LOGIN", "IV_USER": "feser-c", "IV_PASSWORD": "kunden" } } }
-//);
-//var y = new (require('buffer').Buffer)(x);
-//req.write(y, 'binary');
-//req.end();
-//
-//req.on('error', function(e) {
-//  console.error(e);
-//});

@@ -1,64 +1,19 @@
-
 var http = require('http');
-var https = require('https');
-var parse_url = require('url').parse;
+var proxy = require('./proxy').handle_request;
 
 var filename = __dirname + '/proxy-table.json';
 var table = JSON.parse(require('fs').readFileSync(filename));
 
-var pump = require('./node.util.pump').pump;
-
-var protocol_defaults = {
-  'https:': {
-    module: https,
-    port: 443,
-  },
-  'http:': {
-    module: http,
-    port: 80,
-  }
-};
-
 http.createServer(function (req, res) {
-  var match = /^\/([^\/]+)(.*)$/.exec(req.url);
-  var proxyAlias = match[1];
-  if (proxyAlias in table) {
-    var baseUrl = table[proxyAlias];
-    var url = baseUrl + match[2];
-
-    var parsed_baseUrl = parse_url(baseUrl);
-
-    var protocol = parsed_baseUrl.protocol;
-    var hostname = parsed_baseUrl.hostname;
-    var host = parsed_baseUrl.host;
-    var port = parsed_baseUrl.port || protocol_defaults[protocol].port;
-    var path = url.replace(protocol + '//' + host, ''); // TODO url.parse-foo
-    var method = req.method;
-    var module = protocol_defaults[protocol].module;
-    var headers = JSON.parse(JSON.stringify(req.headers));
-    headers.host = host;
-
-    // construct proxy request options
-    var options = {
-      host: hostname,
-      port: port,
-      path: path,
-      method: method,
-      headers: headers
+  if (!proxy(table, req, res)) {
+    var reason = 'You are made of stupid!'
+    var content = '[35;1m' + reason + '[m\r\n';
+    var headers = {
+      'content-type': 'text/plain',
+      'content-length': content.length
     };
-
-    var preq = module.request(options, function(pres) {
-      res.writeHead(pres.statusCode, pres.headers);
-      pres.setEncoding('binary');
-      pump(pres, res);
-      console.log(
-        'proxy request:', method, req.url, '['+url+']', '=>', pres.statusCode);
-    });
-
-    // XXX w/o this pump's writeStream.write(chunk) is borked
-    req.setEncoding('binary');
-
-    pump(req, preq);
+    res.writeHead(404, reason, headers);
+    res.end(content);
   };
 }).listen(1337, function () {
   console.log('Server running at http://127.0.0.1:1337/');

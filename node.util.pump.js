@@ -21,6 +21,7 @@
 
 exports.pump = function(readStream, writeStream, callback) {
   var callbackCalled = false;
+  var endCalled = false;
 
   function call(a, b, c) {
     if (callback && !callbackCalled) {
@@ -54,10 +55,12 @@ exports.pump = function(readStream, writeStream, callback) {
   });
 
   readStream.addListener('end', function() {
+    endCalled = true;
     writeStream.end();
   });
 
   readStream.addListener('close', function() {
+    if (!endCalled) writeStream.end();
     call();
   });
 

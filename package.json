@@ -1,0 +1,21 @@
+{
+  "name": "no-http-proxy",
+  "description": "This is no real HTTP[S] proxy for Node--deal with it... ^_^",
+  "version": "0",
+  "author": "tv",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/4z3/no-http-proxy.js.git"
+  },
+  "keywords": [
+    "reverse",
+    "proxy",
+    "http",
+    "https",
+    "not"
+  ],
+  "main": "./lib/proxy",
+  "engines": {
+    "node": "0.4.x || 0.5.x"
+  }
+}

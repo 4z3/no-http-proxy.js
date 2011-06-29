@@ -1,5 +1,5 @@
 var http = require('http');
-var proxy = require('./proxy').handle_request;
+var proxy = require('../lib/proxy').handle_request;
 
 var filename = __dirname + '/proxy-table.json';
 var table = JSON.parse(require('fs').readFileSync(filename));

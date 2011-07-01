@@ -1,7 +1,7 @@
 {
   "name": "no-http-proxy",
   "description": "This is no real HTTP[S] proxy for Node--deal with it... ^_^",
-  "version": "0",
+  "version": "0.0.0",
   "author": "tv",
   "repository": {
     "type": "git",
